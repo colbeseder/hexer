@@ -175,6 +175,8 @@ func runOption(selection string, f fileDetails) error {
     case "e" :
         replaceData(f.p_fileData, false);
         break;
+    case "replace_hex" : fallthrough;
+    case "rh" : fallthrough;
     case "edit_hex" : fallthrough;
     case "eh" :
         replaceData(f.p_fileData, true);
