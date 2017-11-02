@@ -169,6 +169,8 @@ func runOption(selection string, f fileDetails) error {
         isVerbose = true;
         log("SET_VERBOSE");
         break;
+    case "replace" : fallthrough;
+    case "r" : fallthrough;
     case "edit" : fallthrough;
     case "e" :
         replaceData(f.p_fileData, false);
