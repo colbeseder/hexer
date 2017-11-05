@@ -77,7 +77,7 @@ func printFile(buf *[]byte ) {
             endIdx = len(*buf);
         }
         l := (*buf)[i*16:endIdx];
-        fmt.Printf( formatLine(i, &l ));
+        fmt.Println( formatLine(i, &l ));
     }
 }
 
@@ -99,7 +99,7 @@ func formatLine(lineNum int, line *[]byte) string{
     hexChars := strings.Join(r, " ");
 
     offsetString := leftPad(fmt.Sprintf("%x", offset), "0", 8);
-    return offsetString + "   " + hexChars + "    " + reg.ReplaceAllString(string(*line), ".") + "\n";
+    return offsetString + "   " + hexChars + "    " + reg.ReplaceAllString(string(*line), ".");
 }
 
 func getInput(msg string) string {
