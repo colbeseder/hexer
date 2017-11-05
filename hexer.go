@@ -35,9 +35,12 @@ func leftPad(s string, padStr string, pLen int) string {
 }
 
 func readFileToArray(path string, buf *[]byte ) {
+    *buf = make([]byte, 0);
+    if strings.TrimSpace(path) == "" {
+        return;
+    }
     dat, err := ioutil.ReadFile(path);
     if os.IsNotExist(err){
-        *buf = make([]byte, 0);
         return;
     } else if err != nil {
         panic(err);
@@ -45,12 +48,24 @@ func readFileToArray(path string, buf *[]byte ) {
     *buf = dat;
 }
 
-func saveFile(path string, buf *[]byte){
+func saveFile(f fileDetails){
+    path := f.path;
+    buf := f.p_fileData;
+    if strings.TrimSpace(path) == "" {
+        message("No filename given");
+        return;
+    }
     err := ioutil.WriteFile(path, *buf, 0644);
     if err != nil {
         message("Could not save");
         message(err.Error());
     }
+}
+
+func saveFileAs(p_f *fileDetails){
+    fn := getInput("File Name: ");
+    (*p_f).path = fn;
+    saveFile(*p_f);
 }
 
 func printFile(buf *[]byte ) {
@@ -136,6 +151,8 @@ func overwriteBytes(fileIdx int64, fileBytes *[]byte, newData []byte) error {
 }
 
 func hexStringToString(h string) string{
+    reg, _ := regexp.Compile("[^a-fA-F0-9]");
+    h = reg.ReplaceAllString(h, "");
     datAsBytes :=  []byte(h);
     buf := make([]byte, hex.DecodedLen(len(datAsBytes)));
     hex.Decode(buf, datAsBytes);
@@ -163,7 +180,12 @@ func appendData(fileBytes *[]byte, isDataHex bool){
     overwriteBytes(int64(len(*fileBytes)), fileBytes, []byte(dat));
 }
 
-func runOption(selection string, f fileDetails) error {
+func newFilename(p_f *fileDetails){
+    (*p_f).path = getInput("New Filename: ");
+}
+
+func runOption(selection string, p_f *fileDetails) error {
+    f := *p_f;
     switch selection {
     case "setVerbose":
         isVerbose = true;
@@ -187,7 +209,11 @@ func runOption(selection string, f fileDetails) error {
         break;
     case "save": fallthrough;
     case "s":
-        saveFile(f.path, f.p_fileData);
+        saveFile(f);
+        break;
+    case "save_as": fallthrough;
+    case "sa":
+        saveFileAs(p_f);
         break;
     case "truncate": fallthrough;
     case "trunc":
@@ -212,7 +238,7 @@ func runOption(selection string, f fileDetails) error {
         break;
     case "x":
         //Save and exit
-        saveFile(f.path, f.p_fileData);
+        saveFile(f);
         message("Saved. bye!");
         os.Exit(0);
         break;
@@ -222,7 +248,7 @@ func runOption(selection string, f fileDetails) error {
     return nil;
 }
 
-func getOption(f fileDetails){
+func getOption(f *fileDetails){
     op := getInput("Choose an option: ");
     if op == "" {
         op = "q";
@@ -250,6 +276,6 @@ func main() {
     f := fileDetails{path, &fileBytes} ;
     for {
         message("");
-        getOption(f);
+        getOption(&f);
     }
 }
