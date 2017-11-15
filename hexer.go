@@ -12,7 +12,7 @@ import (
     "bufio"
     "strconv"
 )
-	
+
 type fileDetails struct {
     path string
     p_fileData  *[]byte
@@ -31,7 +31,7 @@ func log(s string){
 }
 
 func leftPad(s string, padStr string, pLen int) string {
-	return strings.Repeat(padStr, pLen - len(s)) + s;
+    return strings.Repeat(padStr, pLen - len(s)) + s;
 }
 
 func readFileToArray(path string, buf *[]byte ) {
@@ -68,7 +68,7 @@ func saveFileAs(p_f *fileDetails){
     saveFile(*p_f);
 }
 
-func printFile(buf *[]byte ) {
+func printFile(buf *[]byte , wait bool) {
     //fmt.Printf("file length: %d \n", len(*buf));
     lineCount := int(math.Ceil( float64(len(*buf)) / float64(16)));
     for i := 0; i < lineCount ; i++  {
@@ -78,6 +78,13 @@ func printFile(buf *[]byte ) {
         }
         l := (*buf)[i*16:endIdx];
         fmt.Println( formatLine(i, &l ));
+    if wait {
+        reader := bufio.NewReader(os.Stdin);
+        text, _, _ := reader.ReadRune();
+        if text == rune("q"[0]) {
+            return;
+        }
+    }
     }
 }
 
@@ -106,9 +113,9 @@ func getInput(msg string) string {
     var text string;
     if (isInteractive){
         reader := bufio.NewReader(os.Stdin);
-        fmt.Printf(msg);    
+        fmt.Printf(msg);
         text, _ = reader.ReadString('\n');
-        return strings.TrimSpace(text);        
+        return strings.TrimSpace(text);
     }
     if nextArg < len(os.Args) {
         text = os.Args[nextArg];
@@ -156,7 +163,7 @@ func hexStringToString(h string) string{
     datAsBytes :=  []byte(h);
     buf := make([]byte, hex.DecodedLen(len(datAsBytes)));
     hex.Decode(buf, datAsBytes);
-    return string(buf);  
+    return string(buf);
 }
 
 func replaceData(fileBytes *[]byte, isDataHex bool){
@@ -205,8 +212,11 @@ func runOption(selection string, p_f *fileDetails) error {
         break;
     case "print":  fallthrough;
     case "p":
-        printFile(f.p_fileData);
+        printFile(f.p_fileData, false);
         break;
+    case "less":
+        printFile(f.p_fileData, true);
+    break;
     case "save": fallthrough;
     case "s":
         saveFile(f);
@@ -271,7 +281,7 @@ func main() {
     fileBytes := make([]byte, 10);
     readFileToArray( path, &fileBytes );
     if (isInteractive) {
-        printFile(&fileBytes);
+        printFile(&fileBytes, false);
     }
     f := fileDetails{path, &fileBytes} ;
     for {
