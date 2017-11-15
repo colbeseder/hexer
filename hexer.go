@@ -160,7 +160,7 @@ func overwriteBytes(fileIdx int64, fileBytes *[]byte, newData []byte) error {
 func hexStringToString(h string) string{
     reg, _ := regexp.Compile("[^a-fA-F0-9]");
     h = reg.ReplaceAllString(h, "");
-    datAsBytes :=  []byte(h);
+    datAsBytes := []byte(h);
     buf := make([]byte, hex.DecodedLen(len(datAsBytes)));
     hex.Decode(buf, datAsBytes);
     return string(buf);
@@ -177,6 +177,23 @@ func replaceData(fileBytes *[]byte, isDataHex bool){
         dat = hexStringToString(dat);
     }
     overwriteBytes(offset, fileBytes, []byte(dat));
+}
+
+func insertData(fileBytes *[]byte, isDataHex bool){
+    t := getInput("Enter offset:  ");
+    offset, e := strconv.ParseInt(t, 16, 64);
+    if e != nil {
+        panic(e);
+    }
+    dat := getInput("Enter data:  ");
+    if (isDataHex){
+        dat = hexStringToString(dat);
+    }
+    datAsBytes := []byte(dat);
+    toShift := make([]byte, int64(len(*fileBytes)) - offset);
+    copy(toShift, (*fileBytes)[offset:]);
+    overwriteBytes(offset + int64(len(datAsBytes)), fileBytes, toShift);
+    overwriteBytes(offset, fileBytes, datAsBytes);
 }
 
 func appendData(fileBytes *[]byte, isDataHex bool){
@@ -239,7 +256,11 @@ func runOption(selection string, p_f *fileDetails) error {
         break;
     case "insert": fallthrough;
     case "i":
-        log("WARNING: 'insert' is not implemented");
+        insertData(f.p_fileData, false);
+        break;
+    case "insert_hex": fallthrough;
+    case "ih":
+        insertData(f.p_fileData, true);
         break;
     case "quit": fallthrough;
     case "q":
@@ -271,16 +292,18 @@ func getOption(f *fileDetails){
 
 var nextArg int;
 var isInteractive bool;
+var isQuietStart bool;
 var isVerbose bool = false;
 
 func main() {
     path := os.Args[1];
     isInteractive = len(os.Args) < 3 || os.Args[2] != "-o";
+    isQuietStart = len(os.Args) >= 3 && (os.Args[2] != "-q" || os.Args[2] != "-quiet");
     nextArg = 3;
 
     fileBytes := make([]byte, 10);
     readFileToArray( path, &fileBytes );
-    if (isInteractive) {
+    if (isInteractive && !isQuietStart) {
         printFile(&fileBytes, false);
     }
     f := fileDetails{path, &fileBytes} ;
