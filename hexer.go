@@ -13,10 +13,6 @@ import (
     "strconv"
 )
 
-type fileDetails struct {
-    path string
-    p_fileData  *[]byte
-}
 
 func message(str string){
     if isInteractive {
@@ -48,7 +44,12 @@ func readFileToArray(path string, buf *[]byte ) {
     *buf = dat;
 }
 
-func saveFile(f fileDetails){
+type doc struct {
+    path string
+    p_fileData  *[]byte
+}
+
+func (f doc) saveFile(){
     path := f.path;
     buf := f.p_fileData;
     if strings.TrimSpace(path) == "" {
@@ -62,14 +63,14 @@ func saveFile(f fileDetails){
     }
 }
 
-func saveFileAs(p_f *fileDetails){
+func (f doc) saveFileAs(){
     fn := getInput("File Name: ");
-    (*p_f).path = fn;
-    saveFile(*p_f);
+    f.path = fn;
+    f.saveFile();
 }
 
-func printFile(buf *[]byte , wait bool) {
-    //fmt.Printf("file length: %d \n", len(*buf));
+func (f doc) printFile(wait bool) {
+    buf := f.p_fileData;
     lineCount := int(math.Ceil( float64(len(*buf)) / float64(16)));
     for i := 0; i < lineCount ; i++  {
         endIdx := (i+1)*16;
@@ -78,14 +79,112 @@ func printFile(buf *[]byte , wait bool) {
         }
         l := (*buf)[i*16:endIdx];
         fmt.Println( formatLine(i, &l ));
-    if wait {
-        reader := bufio.NewReader(os.Stdin);
-        text, _, _ := reader.ReadRune();
-        if text == rune("q"[0]) {
-            return;
+        if wait {
+            reader := bufio.NewReader(os.Stdin);
+            text, _, _ := reader.ReadRune();
+            if text == rune("q"[0]) {
+                return;
+            }
         }
     }
+}
+
+func (f doc) truncate(){
+    fileBytes := f.p_fileData;
+    t := getInput("Truncate to length:  ");
+    l, _ := strconv.ParseInt(t, 16, 64);
+    newFileBytes := (*fileBytes)[:l];
+    *fileBytes = newFileBytes;
+}
+
+func (f doc) overwriteBytes(fileIdx int64, newData []byte) error {
+    fileBytes := f.p_fileData;
+    dataIdx := 0;
+    dataLen := len(newData);
+    fileLen := int64(len(*fileBytes));
+
+    if fileIdx + int64(dataLen) > fileLen {
+        //Make file byte array long enough to accept the data
+        bytesToAdd := fileIdx + int64(dataLen) - fileLen;
+        newFileBytes := append(*fileBytes, make([]byte, bytesToAdd ) ...);
+        *fileBytes = newFileBytes;
+        fileLen = int64(len(*fileBytes));
     }
+
+    for dataIdx < dataLen && fileIdx < fileLen {
+        (*fileBytes)[fileIdx] = newData[dataIdx];
+        dataIdx++;
+        fileIdx++;
+    }
+
+    return nil;
+}
+
+func (f doc) replaceData(isDataHex bool){
+    t := getInput("Enter offset:  ");
+    offset, e := strconv.ParseInt(t, 16, 64);
+    if e != nil {
+        panic(e);
+    }
+    dat := getInput("Enter data:  ");
+    if (isDataHex){
+        dat = hexStringToString(dat);
+    }
+    f.overwriteBytes(offset, []byte(dat));
+}
+
+func (f doc) deleteData(){
+    fileBytes := f.p_fileData;
+    t := getInput("Enter offset:  ");
+    offset, e := strconv.ParseInt(t, 16, 64);
+    l, e := strconv.ParseInt(getInput("Enter number of bytes:  "), 16, 64);
+
+    if e != nil {
+        panic(e);
+    }
+
+    toShift := make([]byte, int64(len(*fileBytes)) - (offset + l));
+    copy(toShift, (*fileBytes)[offset+l:]);
+    f.overwriteBytes(offset, toShift);
+
+    newFileLength := int64(len(*fileBytes)) - l;
+
+    newFileBytes := (*fileBytes)[:newFileLength];
+    *fileBytes = newFileBytes;
+}
+
+func (f doc) insertData(isDataHex bool){
+    fileBytes := f.p_fileData;
+    t := getInput("Enter offset:  ");
+    offset, e := strconv.ParseInt(t, 16, 64);
+    if e != nil {
+        panic(e);
+    }
+    dat := getInput("Enter data:  ");
+    if (isDataHex){
+        dat = hexStringToString(dat);
+    }
+    datAsBytes := []byte(dat);
+    toShift := make([]byte, int64(len(*fileBytes)) - offset);
+    copy(toShift, (*fileBytes)[offset:]);
+    f.overwriteBytes(offset + int64(len(datAsBytes)), toShift);
+    f.overwriteBytes(offset, datAsBytes);
+}
+
+func (f doc) appendData(isDataHex bool){
+    fileBytes := f.p_fileData;
+    dat := getInput("Enter data:  ");
+    if (isDataHex){
+        dat = hexStringToString(dat);
+    }
+    f.overwriteBytes(int64(len(*fileBytes)), []byte(dat));
+}
+
+func newDoc(path string) *doc {
+    fileBytes := make([]byte, 10);
+    readFileToArray( path, &fileBytes );
+    f := doc{path, &fileBytes} ;
+    return &f;
 }
 
 func formatLine(lineNum int, line *[]byte) string{
@@ -133,35 +232,6 @@ func getInput(msg string) string {
     return text;
 }
 
-func truncate(fileBytes *[]byte){
-    t := getInput("Truncate to length:  ");
-    l, _ := strconv.ParseInt(t, 16, 64);
-    newFileBytes := (*fileBytes)[:l];
-    *fileBytes = newFileBytes;
-}
-
-func overwriteBytes(fileIdx int64, fileBytes *[]byte, newData []byte) error {
-    dataIdx := 0;
-    dataLen := len(newData);
-    fileLen := int64(len(*fileBytes));
-
-    if fileIdx + int64(dataLen) > fileLen {
-        //Make file byte array long enough to accept the data
-        bytesToAdd := fileIdx + int64(dataLen) - fileLen;
-        newFileBytes := append(*fileBytes, make([]byte, bytesToAdd ) ...);
-        *fileBytes = newFileBytes;
-        fileLen = int64(len(*fileBytes));
-    }
-
-    for dataIdx < dataLen && fileIdx < fileLen {
-        (*fileBytes)[fileIdx] = newData[dataIdx];
-        dataIdx++;
-        fileIdx++;
-    }
-
-    return nil;
-}
-
 func hexStringToString(h string) string{
     reg, _ := regexp.Compile("[^a-fA-F0-9]");
     h = reg.ReplaceAllString(h, "");
@@ -171,68 +241,7 @@ func hexStringToString(h string) string{
     return string(buf);
 }
 
-func replaceData(fileBytes *[]byte, isDataHex bool){
-    t := getInput("Enter offset:  ");
-    offset, e := strconv.ParseInt(t, 16, 64);
-    if e != nil {
-        panic(e);
-    }
-    dat := getInput("Enter data:  ");
-    if (isDataHex){
-        dat = hexStringToString(dat);
-    }
-    overwriteBytes(offset, fileBytes, []byte(dat));
-}
-
-func deleteData(fileBytes *[]byte){
-    t := getInput("Enter offset:  ");
-    offset, e := strconv.ParseInt(t, 16, 64);
-    l, e := strconv.ParseInt(getInput("Enter number of bytes:  "), 16, 64);
-    
-    if e != nil {
-        panic(e);
-    }
-    
-    toShift := make([]byte, int64(len(*fileBytes)) - (offset + l));
-    copy(toShift, (*fileBytes)[offset+l:]);
-    overwriteBytes(offset, fileBytes, toShift);
-    
-    newFileLength := int64(len(*fileBytes)) - l;
-    
-    newFileBytes := (*fileBytes)[:newFileLength];
-    *fileBytes = newFileBytes;
-}
-
-func insertData(fileBytes *[]byte, isDataHex bool){
-    t := getInput("Enter offset:  ");
-    offset, e := strconv.ParseInt(t, 16, 64);
-    if e != nil {
-        panic(e);
-    }
-    dat := getInput("Enter data:  ");
-    if (isDataHex){
-        dat = hexStringToString(dat);
-    }
-    datAsBytes := []byte(dat);
-    toShift := make([]byte, int64(len(*fileBytes)) - offset);
-    copy(toShift, (*fileBytes)[offset:]);
-    overwriteBytes(offset + int64(len(datAsBytes)), fileBytes, toShift);
-    overwriteBytes(offset, fileBytes, datAsBytes);
-}
-
-func appendData(fileBytes *[]byte, isDataHex bool){
-    dat := getInput("Enter data:  ");
-    if (isDataHex){
-        dat = hexStringToString(dat);
-    }
-    overwriteBytes(int64(len(*fileBytes)), fileBytes, []byte(dat));
-}
-
-func newFilename(p_f *fileDetails){
-    (*p_f).path = getInput("New Filename: ");
-}
-
-func runOption(selection string, p_f *fileDetails) error {
+func runOption(selection string, p_f *doc) error {
     f := *p_f;
     switch selection {
     case "setVerbose":
@@ -243,52 +252,52 @@ func runOption(selection string, p_f *fileDetails) error {
     case "r" : fallthrough;
     case "edit" : fallthrough;
     case "e" :
-        replaceData(f.p_fileData, false);
+        f.replaceData(false);
         break;
     case "delete" : fallthrough;
     case "d" :
-        deleteData(f.p_fileData);
+        f.deleteData();
         break;
     case "replace_hex" : fallthrough;
     case "rh" : fallthrough;
     case "edit_hex" : fallthrough;
     case "eh" :
-        replaceData(f.p_fileData, true);
+        f.replaceData(true);
         break;
     case "print":  fallthrough;
     case "p":
-        printFile(f.p_fileData, false);
+        f.printFile(false);
         break;
     case "less":
-        printFile(f.p_fileData, true);
+        f.printFile(true);
     break;
     case "save": fallthrough;
     case "s":
-        saveFile(f);
+        f.saveFile();
         break;
     case "save_as": fallthrough;
     case "sa":
-        saveFileAs(p_f);
+        f.saveFileAs();
         break;
     case "truncate": fallthrough;
     case "trunc":
-        truncate(f.p_fileData);
+        f.truncate();
         break;
     case "append": fallthrough;
     case "a":
-        appendData(f.p_fileData, false);
+        f.appendData(false);
         break;
     case "append_hex": fallthrough;
     case "ah":
-        appendData(f.p_fileData, true);
+        f.appendData(true);
         break;
     case "insert": fallthrough;
     case "i":
-        insertData(f.p_fileData, false);
+        f.insertData(false);
         break;
     case "insert_hex": fallthrough;
     case "ih":
-        insertData(f.p_fileData, true);
+        f.insertData(true);
         break;
     case "quit": fallthrough;
     case "q":
@@ -297,7 +306,7 @@ func runOption(selection string, p_f *fileDetails) error {
         break;
     case "x":
         //Save and exit
-        saveFile(f);
+        f.saveFile();
         message("Saved. bye!");
         os.Exit(0);
         break;
@@ -307,7 +316,7 @@ func runOption(selection string, p_f *fileDetails) error {
     return nil;
 }
 
-func getOption(f *fileDetails){
+func getOption(f *doc){
     op := getInput("Choose an option: ");
     if op == "" {
         op = "q";
@@ -329,12 +338,11 @@ func main() {
     isQuietStart = len(os.Args) >= 3 && (os.Args[2] != "-q" || os.Args[2] != "-quiet");
     nextArg = 3;
 
-    fileBytes := make([]byte, 10);
-    readFileToArray( path, &fileBytes );
+    f := *(newDoc(path));
+    
     if (isInteractive && !isQuietStart) {
-        printFile(&fileBytes, false);
+        f.printFile(false);
     }
-    f := fileDetails{path, &fileBytes} ;
     for {
         message("");
         getOption(&f);
