@@ -13,18 +13,7 @@ import (
     "strconv"
 )
 
-
-func message(str string){
-    if isInteractive {
-        fmt.Println(str);
-    }
-}
-
-func log(s string){
-    if isVerbose {
-        fmt.Println(s);
-    }
-}
+var v viewer;
 
 func leftPad(s string, padStr string, pLen int) string {
     return strings.Repeat(padStr, pLen - len(s)) + s;
@@ -49,27 +38,28 @@ type doc struct {
     p_fileData  *[]byte
 }
 
-func (f doc) saveFile(){
+func (f *doc) saveFile(p_v *viewer){
+	v := *p_v;
     path := f.path;
     buf := f.p_fileData;
     if strings.TrimSpace(path) == "" {
-        message("No filename given");
+        v.message("No filename given");
         return;
     }
     err := ioutil.WriteFile(path, *buf, 0644);
     if err != nil {
-        message("Could not save");
-        message(err.Error());
+        v.message("Could not save");
+        v.message(err.Error());
     }
 }
 
-func (f doc) saveFileAs(){
+func (f *doc) saveFileAs(p_v *viewer){
     fn := getInput("File Name: ");
     f.path = fn;
-    f.saveFile();
+    f.saveFile(p_v);
 }
 
-func (f doc) printFile(wait bool) {
+func (f *doc) printFile(wait bool) {
     buf := f.p_fileData;
     lineCount := int(math.Ceil( float64(len(*buf)) / float64(16)));
     for i := 0; i < lineCount ; i++  {
@@ -89,7 +79,7 @@ func (f doc) printFile(wait bool) {
     }
 }
 
-func (f doc) truncate(){
+func (f *doc) truncate(){
     fileBytes := f.p_fileData;
     t := getInput("Truncate to length:  ");
     l, _ := strconv.ParseInt(t, 16, 64);
@@ -97,7 +87,7 @@ func (f doc) truncate(){
     *fileBytes = newFileBytes;
 }
 
-func (f doc) overwriteBytes(fileIdx int64, newData []byte) error {
+func (f *doc) overwriteBytes(fileIdx int64, newData []byte) error {
     fileBytes := f.p_fileData;
     dataIdx := 0;
     dataLen := len(newData);
@@ -120,7 +110,7 @@ func (f doc) overwriteBytes(fileIdx int64, newData []byte) error {
     return nil;
 }
 
-func (f doc) replaceData(isDataHex bool){
+func (f *doc) replaceData(isDataHex bool){
     t := getInput("Enter offset:  ");
     offset, e := strconv.ParseInt(t, 16, 64);
     if e != nil {
@@ -133,7 +123,7 @@ func (f doc) replaceData(isDataHex bool){
     f.overwriteBytes(offset, []byte(dat));
 }
 
-func (f doc) deleteData(){
+func (f *doc) deleteData(){
     fileBytes := f.p_fileData;
     t := getInput("Enter offset:  ");
     offset, e := strconv.ParseInt(t, 16, 64);
@@ -153,7 +143,7 @@ func (f doc) deleteData(){
     *fileBytes = newFileBytes;
 }
 
-func (f doc) insertData(isDataHex bool){
+func (f *doc) insertData(isDataHex bool){
     fileBytes := f.p_fileData;
     t := getInput("Enter offset:  ");
     offset, e := strconv.ParseInt(t, 16, 64);
@@ -171,7 +161,7 @@ func (f doc) insertData(isDataHex bool){
     f.overwriteBytes(offset, datAsBytes);
 }
 
-func (f doc) appendData(isDataHex bool){
+func (f *doc) appendData(isDataHex bool){
     fileBytes := f.p_fileData;
     dat := getInput("Enter data:  ");
     if (isDataHex){
@@ -179,6 +169,37 @@ func (f doc) appendData(isDataHex bool){
     }
     f.overwriteBytes(int64(len(*fileBytes)), []byte(dat));
 }
+
+type viewer struct {
+	args []string
+	isInteractive bool
+	isQuietStart bool
+	isVerbose bool
+	nextArg int
+}
+
+func (v *viewer) getNextArg(msg string) string {
+	r := ""
+    if v.nextArg < len(v.args) {
+        r = v.args[v.nextArg];
+    }
+	v.log(">>> " + msg + " " + r);
+    v.nextArg++ ;
+	return r;
+}
+
+func (v *viewer) message(str string){
+    if v.isInteractive {
+        fmt.Println(str);
+    }
+}
+
+func (v viewer) log(str string){
+    if v.isVerbose {
+        fmt.Println(str);
+    }
+}
+
 
 func newDoc(path string) *doc {
     fileBytes := make([]byte, 10);
@@ -215,21 +236,13 @@ func trimTrailingLinebreaks(txt string) string {
 
 func getInput(msg string) string {
     var text string;
-    if (isInteractive){
+    if (v.isInteractive){
         reader := bufio.NewReader(os.Stdin);
         fmt.Printf(msg);
         text, _ = reader.ReadString('\n');
         return trimTrailingLinebreaks(text);
     }
-    if nextArg < len(os.Args) {
-        text = os.Args[nextArg];
-        log(">>> " + msg + " " + text);
-    } else {
-        // No more arguments
-        text = "";
-    }
-    nextArg++ ;
-    return text;
+    return v.getNextArg(msg);
 }
 
 func hexStringToString(h string) string{
@@ -241,12 +254,13 @@ func hexStringToString(h string) string{
     return string(buf);
 }
 
-func runOption(selection string, p_f *doc) error {
+func runOption(selection string, p_f *doc, p_v *viewer) error {
     f := *p_f;
+    v := *p_v;
     switch selection {
     case "setVerbose":
-        isVerbose = true;
-        log("SET_VERBOSE");
+        v.isVerbose = true;
+        v.log("SET_VERBOSE");
         break;
     case "replace" : fallthrough;
     case "r" : fallthrough;
@@ -273,11 +287,11 @@ func runOption(selection string, p_f *doc) error {
     break;
     case "save": fallthrough;
     case "s":
-        f.saveFile();
+        f.saveFile(p_v);
         break;
     case "save_as": fallthrough;
     case "sa":
-        f.saveFileAs();
+        f.saveFileAs(p_v);
         break;
     case "truncate": fallthrough;
     case "trunc":
@@ -301,13 +315,13 @@ func runOption(selection string, p_f *doc) error {
         break;
     case "quit": fallthrough;
     case "q":
-        message("bye!");
+        v.message("bye!");
         os.Exit(0);
         break;
     case "x":
         //Save and exit
-        f.saveFile();
-        message("Saved. bye!");
+        f.saveFile(p_v);
+        v.message("Saved. bye!");
         os.Exit(0);
         break;
     default:
@@ -316,35 +330,32 @@ func runOption(selection string, p_f *doc) error {
     return nil;
 }
 
-func getOption(f *doc){
+func getOption(f *doc, p_v *viewer){
     op := getInput("Choose an option: ");
     if op == "" {
         op = "q";
     }
-    e := runOption(op, f);
+    e := runOption(op, f, p_v);
     if e != nil {
         fmt.Println(e);
     }
 }
 
-var nextArg int;
-var isInteractive bool;
-var isQuietStart bool;
-var isVerbose bool = false;
+const IS_VERBOSE = false;
 
 func main() {
     path := os.Args[1];
-    isInteractive = len(os.Args) < 3 || os.Args[2] != "-o";
-    isQuietStart = len(os.Args) >= 3 && (os.Args[2] != "-q" || os.Args[2] != "-quiet");
-    nextArg = 3;
+    isInteractive := len(os.Args) < 3 || os.Args[2] != "-o";
+    isQuietStart := len(os.Args) >= 3 && (os.Args[2] != "-q" || os.Args[2] != "-quiet");
+	v = viewer{ os.Args, isInteractive, isQuietStart, IS_VERBOSE, 3 } ;
 
     f := *(newDoc(path));
     
-    if (isInteractive && !isQuietStart) {
+    if (v.isInteractive && !v.isQuietStart) {
         f.printFile(false);
     }
     for {
-        message("");
-        getOption(&f);
+        v.message("");
+        getOption(&f, &v);
     }
 }
