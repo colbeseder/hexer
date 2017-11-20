@@ -109,23 +109,28 @@ func formatLine(lineNum int, line *[]byte) string{
     return offsetString + "   " + hexChars + "    " + reg.ReplaceAllString(string(*line), ".");
 }
 
+func trimTrailingLinebreaks(txt string) string {
+	reg, _ := regexp.Compile("[\\n\\r]+$");
+	return reg.ReplaceAllString(txt, "");
+}
+
 func getInput(msg string) string {
     var text string;
     if (isInteractive){
         reader := bufio.NewReader(os.Stdin);
         fmt.Printf(msg);
         text, _ = reader.ReadString('\n');
-        return strings.TrimSpace(text);
+        return trimTrailingLinebreaks(text);
     }
     if nextArg < len(os.Args) {
         text = os.Args[nextArg];
         log(">>> " + msg + " " + text);
     } else {
         // No more arguments
-        text =  "";
+        text = "";
     }
     nextArg++ ;
-    return strings.TrimSpace(text);
+    return text;
 }
 
 func truncate(fileBytes *[]byte){
