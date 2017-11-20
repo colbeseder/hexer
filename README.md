@@ -9,16 +9,16 @@
 
 #### Start editing
 
-    00000000   54 68 69 73 20 69 73 20 6d 79 20 20 70 72 61 63    This.is.my..prac
-    00000010   74 69 63 65 20 66 69 6c 65 0a                      tice.file.
+    00000000   54 68 69 73 20 69 73 20 6d 79 20 70 72 61 63 74    This.is.my.pract
+    00000010   69 63 65 20 66 69 6c 65                            ice.file
     
-    Choose an option: edit
+    Choose an option: insert
     Enter offset:  0b
-    Enter data:  great
+    Enter data:  great 
     
     Choose an option: print
     00000000   54 68 69 73 20 69 73 20 6d 79 20 67 72 65 61 74    This.is.my.great
-    00000010   74 69 63 65 20 66 69 6c 65 0a                      tice.file.
+    00000010   20 70 72 61 63 74 69 63 65 20 66 69 6c 65          .practice.file
 
     Choose an option: save_as
     File Name: new_file.txt
@@ -29,7 +29,7 @@
 
     Choose an option: print
     00000000   54 68 69 73 20 69 73 20 6d 79 20 73 75 70 65 72    This.is.my.super
-    00000010   74 69 63 65 20 66 69 6c 65 0a                      tice.file.
+    00000010   20 70 72 61 63 74 69 63 65 20 66 69 6c 65          .practice.file
 
     Choose an option: save
 
@@ -40,7 +40,7 @@
 
 Pass in all commands at start
 
-    $ ./hexer file.txt -o edit 0b "great" save_as new_file.txt
+    $ ./hexer file.txt -o insert 0b "great " save_as new_file.txt
 
 Full command list:
 
@@ -84,7 +84,7 @@ Add text to end of file
 ####append_hex
 (aka **ah**)
 
-Add bytes to end of file. Bytes should be provided in hex format.
+Add bytes to end of file. Bytes should be provided in hex format
 
 ####insert
 (aka **i**)
@@ -94,7 +94,12 @@ Add text to file at provided offset
 ####insert_hex
 (aka **ih**)
 
-Add bytes to file at provided offset. Bytes should be provided in hex format.
+Add bytes to file at provided offset. Bytes should be provided in hex format
+
+####delete
+(aka **d**)
+
+Delete specified number of bytes, starting at the offset
 
 ####quit
 (aka **q**)

@@ -110,8 +110,8 @@ func formatLine(lineNum int, line *[]byte) string{
 }
 
 func trimTrailingLinebreaks(txt string) string {
-	reg, _ := regexp.Compile("[\\n\\r]+$");
-	return reg.ReplaceAllString(txt, "");
+    reg, _ := regexp.Compile("[\\n\\r]+$");
+    return reg.ReplaceAllString(txt, "");
 }
 
 func getInput(msg string) string {
@@ -184,6 +184,25 @@ func replaceData(fileBytes *[]byte, isDataHex bool){
     overwriteBytes(offset, fileBytes, []byte(dat));
 }
 
+func deleteData(fileBytes *[]byte){
+    t := getInput("Enter offset:  ");
+    offset, e := strconv.ParseInt(t, 16, 64);
+    l, e := strconv.ParseInt(getInput("Enter number of bytes:  "), 16, 64);
+    
+    if e != nil {
+        panic(e);
+    }
+    
+    toShift := make([]byte, int64(len(*fileBytes)) - (offset + l));
+    copy(toShift, (*fileBytes)[offset+l:]);
+    overwriteBytes(offset, fileBytes, toShift);
+    
+    newFileLength := int64(len(*fileBytes)) - l;
+    
+    newFileBytes := (*fileBytes)[:newFileLength];
+    *fileBytes = newFileBytes;
+}
+
 func insertData(fileBytes *[]byte, isDataHex bool){
     t := getInput("Enter offset:  ");
     offset, e := strconv.ParseInt(t, 16, 64);
@@ -225,6 +244,10 @@ func runOption(selection string, p_f *fileDetails) error {
     case "edit" : fallthrough;
     case "e" :
         replaceData(f.p_fileData, false);
+        break;
+    case "delete" : fallthrough;
+    case "d" :
+        deleteData(f.p_fileData);
         break;
     case "replace_hex" : fallthrough;
     case "rh" : fallthrough;
