@@ -107,4 +107,4 @@ Delete specified number of bytes, starting at the offset
 Exit _hexer_
 
 ####x
-Save and exit
+Save and exitmore

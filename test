@@ -1,0 +1,18 @@
+/drives/c/Go/bin/go build
+
+#insert and print
+TEST1=$( ./hexer file.txt -o "i" 8 "not " p | grep "54 68 69 73 20 69 73 20 6e 6f 74 20 6d 79 20 70" )
+
+#edit_hex
+TEST2=$( ./hexer file.txt -o "eh" 10 "65 65 65" p | grep "eee" )
+
+#append and save as
+rm new.txt
+./hexer file.txt -o a more sa "new.txt"
+TEST3=$(grep more new.txt)
+
+if [ "$TEST1" ] && [ "$TEST2" ] && [ "$TEST3" ] ; then
+	echo "OK"
+else
+	echo "FAIL"
+fi

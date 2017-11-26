@@ -39,7 +39,7 @@ type doc struct {
 }
 
 func (f *doc) saveFile(p_v *viewer){
-	v := *p_v;
+    v := *p_v;
     path := f.path;
     buf := f.p_fileData;
     if strings.TrimSpace(path) == "" {
@@ -60,15 +60,25 @@ func (f *doc) saveFileAs(p_v *viewer){
 }
 
 func (f *doc) printFile(wait bool) {
+    f.printFileSection(wait, 0, 0);
+}
+
+func (f *doc) printFileSection(wait bool, start int, stop int) {
     buf := f.p_fileData;
     lineCount := int(math.Ceil( float64(len(*buf)) / float64(16)));
-    for i := 0; i < lineCount ; i++  {
-        endIdx := (i+1)*16;
+    if stop == 0 || stop > lineCount{
+        stop = lineCount;
+    }
+
+    startLine := start / 16;
+    
+    for line := startLine; line < stop ; line++  {
+        endIdx := (line+1)*16;
         if endIdx > len(*buf) {
             endIdx = len(*buf);
         }
-        l := (*buf)[i*16:endIdx];
-        fmt.Println( formatLine(i, &l ));
+        l := (*buf)[line*16:endIdx];
+        fmt.Println( formatLine(line, &l ));
         if wait {
             reader := bufio.NewReader(os.Stdin);
             text, _, _ := reader.ReadRune();
@@ -171,21 +181,21 @@ func (f *doc) appendData(isDataHex bool){
 }
 
 type viewer struct {
-	args []string
-	isInteractive bool
-	isQuietStart bool
-	isVerbose bool
-	nextArg int
+    args []string
+    isInteractive bool
+    isQuietStart bool
+    isVerbose bool
+    nextArg int
 }
 
 func (v *viewer) getNextArg(msg string) string {
-	r := ""
+    r := ""
     if v.nextArg < len(v.args) {
         r = v.args[v.nextArg];
     }
-	v.log(">>> " + msg + " " + r);
+    v.log(">>> " + msg + " " + r);
     v.nextArg++ ;
-	return r;
+    return r;
 }
 
 func (v *viewer) message(str string){
@@ -282,6 +292,11 @@ func runOption(selection string, p_f *doc, p_v *viewer) error {
     case "p":
         f.printFile(false);
         break;
+    case "print_segment":  fallthrough;
+    case "ps":
+        startOffset, _ := strconv.ParseInt(getInput("Start Offset: "), 16, 64);
+        f.printFileSection(true, int(startOffset) , 0);
+        break;
     case "less":
         f.printFile(true);
     break;
@@ -347,7 +362,7 @@ func main() {
     path := os.Args[1];
     isInteractive := len(os.Args) < 3 || os.Args[2] != "-o";
     isQuietStart := len(os.Args) >= 3 && (os.Args[2] != "-q" || os.Args[2] != "-quiet");
-	v = viewer{ os.Args, isInteractive, isQuietStart, IS_VERBOSE, 3 } ;
+    v = viewer{ os.Args, isInteractive, isQuietStart, IS_VERBOSE, 3 } ;
 
     f := *(newDoc(path));
     
